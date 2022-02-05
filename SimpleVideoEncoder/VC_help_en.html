@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 7.2.4.1 (Windows)"/>
+	<meta name="created" content="2021-12-31T15:32:29.470000000"/>
+	<meta name="changed" content="2021-12-31T17:02:01.864000000"/>
+	<style type="text/css">
+		@page { margin: 2cm }
+		p { margin-bottom: 0.25cm }
+	</style>
+</head>
+<body lang="uk-UA" dir="ltr"><p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">
+<b>Aim</b> 
+</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><i>Simple
+video encoder</i> is frontend for ffmpeg designed to encode video
+files. The application is designed so that the process of starting
+the encoding of one or more videofiles takes 2-3 clicks. 
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><b>Working
+with the application</b> 
+</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">1. To
+encode one or more videos, select them using the “Choose file(s)”
+button to select some video files or use the “Choose directory”
+button to select all video files in a specific directory.</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">2. Set
+the encoding parameters.</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">3.
+Press the “Encode” button to start encoding.</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><b>Data
+output</b> 
+</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">The
+encoded video will be placed in the “conv” directory, which will
+be created in the directory, where the original videofile is located.
+The original video file will be moved to the “done” directory. 
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><b>Encoding
+parameters</b> 
+</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">1. On
+the front panel of the application you can select the resolution of
+the final video and bitrate.</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">2. You
+can select one-pass or two-pass encoding in the settings.</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">3. You
+can also set the encoding criterion in the style of &quot;encode only
+those videos in which the hour duration is larger than xxx MB&quot;,
+which is useful if the recoding is done to reduce the video size.</p>
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">4. The
+“Use own encoding parameters” option provides ample opportunities
+for fine-tuning of the encoding. Here it is possible to set features
+of encoding using parameters of ffmpeg (see <a href="https://ffmpeg.org/ffmpeg.html">ffmpeg
+documentation</a>). By default, the program uses the following
+commands for encoding.</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">One-pass
+recoding: 
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><font face="Consolas, monospace"><font size="2" style="font-size: 9pt">ffmpeg.exe
+-y -i InputFile <font color="#ff0000">-c: v libx264 -f mp4</font> -b:
+v btrtK -vf scale = x: y OutputFile </font></font>
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">Two-pass
+recoding: 
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><font face="Consolas, monospace"><font size="2" style="font-size: 9pt">ffmpeg.exe
+-y -i InputFile </font></font><font color="#ff0000"><font face="Consolas, monospace"><font size="2" style="font-size: 9pt">-c:
+v libx264 -f mp4</font></font></font> <font face="Consolas, monospace"><font size="2" style="font-size: 9pt">-b:
+v btrtK -vf -pass 1 scale = x:y NULL</font></font> 
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm"><font face="Consolas, monospace"><font size="2" style="font-size: 9pt">ffmpeg.exe
+-y -i InputFile <font color="#ff0000">-c: v libx264 -f mp4</font> -b:
+v btrtK -vf -pass 2 scale = x:y OutputFile, </font></font>
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">where
+btrtK - bitrate in kBps; x:y - resolution of video. 
+</p>
+
+<p lang="en-US" style="line-height: 100%; margin-bottom: 0cm">If you
+use the “Use own encoding parameters” option, the parameters
+highlighted in red will be replaced by user-defined parameters. 
+</p>
+<p align="justify" style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+</body>
+</html>
