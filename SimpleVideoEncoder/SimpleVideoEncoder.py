@@ -40,7 +40,7 @@ ST_1PASS = 51
 ST_2PASS = 52
 
 DATA_FILE_NAME = path.expandvars(r'%APPDATA%\SimpleVideoEncoder\persistent_data.pickle')
-
+DATA_FILE_PATH = DATA_FILE_NAME.rsplit('\\', 1)[0] + '\\'
         
 class Help ( wx.Frame ):
 
@@ -831,7 +831,7 @@ class Easy_Videoconvertor(wx.Frame):
             try:
                 string = util_path + ' -y -i ' + '\"' + input_file_path + '\" '
                 string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K' + ' -pass 1' + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() 
-                string += ' NULL  -hide_banner'
+                string += ' -passlogfile ' + DATA_FILE_PATH + 'path1log.log ' + DATA_FILE_PATH + 'NULL  -hide_banner'
                 self.m_staticText7.SetLabel('Encoding progress (1 pass):')
                 self.status = ST_1PASS
                 time_enc_start = datetime.datetime.now()
@@ -843,7 +843,7 @@ class Easy_Videoconvertor(wx.Frame):
             try:
                 string = util_path + ' -y -i ' + '\"' + input_file_path + '\" '
                 string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K' + ' -pass 2' + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() + ' ' 
-                string +=   '\"' +  output_file_path +  '\" -hide_banner' 
+                string += ' -passlogfile ' + DATA_FILE_PATH + 'path1log.log ' +   '\"' +  output_file_path +  '\" -hide_banner' 
                 self.m_staticText7.SetLabel('Encoding progress (2 pass):')
                 self.status = ST_2PASS
                 time_enc_start = datetime.datetime.now()
@@ -875,12 +875,16 @@ class Easy_Videoconvertor(wx.Frame):
             os.makedirs(dirpath)
 
 
-    def delete_garbage_after(self,file_path: str):
-        dirpath = file_path.rsplit('\\', 1)[0]
+    def delete_garbage_after(self,file_path=''):
+        if file_path:        
+            dirpath = file_path.rsplit('\\', 1)[0]
+        else:
+            dirpath = DATA_FILE_PATH
+
         for root, dirs, files in os.walk(dirpath):
             for name in files:
                 temp_str = os.path.join(root, name)
-                if 'NULL' in temp_str or 'ffmpeg2pass' in temp_str:
+                if 'NULL' in temp_str or 'path1log' in temp_str:
                     os.remove(temp_str)
 
             for name in dirs:
@@ -941,7 +945,7 @@ class Easy_Videoconvertor(wx.Frame):
                     os.rename(self.file_list[self.i], self.move_file_list[self.i])
         
                     self.m_main_listBox.SetString(self.i, self.m_main_listBox.GetString(self.i) + '   <--- Done')
-                    self.delete_garbage_after(self.file_list[self.i])
+                    self.delete_garbage_after()
                 else:
                     if self.status == ST_STOPPED:
                         return
