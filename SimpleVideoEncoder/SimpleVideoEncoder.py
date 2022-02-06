@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+from os import path
 from os.path import abspath
 import time
 import sched
@@ -38,7 +39,7 @@ ST_ENCODING = 50
 ST_1PASS = 51
 ST_2PASS = 52
 
-
+DATA_FILE_NAME = path.expandvars(r'%APPDATA%\SimpleVideoEncoder\persistent_data.pickle')
 
         
 class Help ( wx.Frame ):
@@ -108,10 +109,10 @@ class About ( wx.Frame ):
 
 
 class Settings:
-    DATA_FILE_NAME = abspath(__file__).rsplit('\\')[0] + 'persistent_data.pickle'
+    
+    
     default_encode_param = '-c:v libx264  -f mp4'
-
-    ffmpeg_location = abspath(__file__).rsplit('\\')[0] + 'ffmpeg.exe'
+    ffmpeg_location = abspath(__file__).rsplit('\\',1)[0] + '\\ffmpeg.exe'
     is_two_pass = True
     is_cryterium_on = False
     limit_size_mb = str(700)
@@ -125,7 +126,7 @@ class Settings:
         
        
         try:  
-            with open(self.DATA_FILE_NAME, 'rb') as f:  
+            with open(DATA_FILE_NAME, 'rb') as f:  
                 self.my_persistent_data = pickle.load(f)  
         except Exception:  
             self.my_persistent_data = {}  
@@ -149,7 +150,7 @@ class Settings:
     def write_settings(self):
 
         try:  
-            with open(self.DATA_FILE_NAME, 'rb') as f:  
+            with open(DATA_FILE_NAME, 'rb') as f:  
                 self.my_persistent_data = pickle.load(f)  
         except Exception:  
             self.my_persistent_data = {}  
@@ -168,7 +169,7 @@ class Settings:
                         'bitrate' : self.bitrate
                         })
 
-        with open(self.DATA_FILE_NAME, 'wb') as f:  
+        with open(DATA_FILE_NAME, 'wb') as f:  
              pickle.dump(self.my_persistent_data, f)  
 
 
@@ -364,6 +365,7 @@ class Easy_Videoconvertor(wx.Frame):
     def __init__(self, parent):
         super().__init__()
         
+     
         
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_timer, self.timer)
@@ -536,6 +538,7 @@ class Easy_Videoconvertor(wx.Frame):
         self.m_bt_stop.Bind( wx.EVT_BUTTON, self.on_stop )
         
         #******************************#
+        self.create_directory_if_needed(DATA_FILE_NAME)
         self.settings.read_settings()
         self.res_x.SetValue(self.settings.res_x)
         self.res_y.SetValue(self.settings.res_y)
@@ -544,6 +547,9 @@ class Easy_Videoconvertor(wx.Frame):
         self.Bind(EVT_ENC_END_EVENT, self.on_enc_end)
 
         self.prepare_waiting_interface()
+
+        
+
 
   
     def prepare_waiting_interface(self):
@@ -798,7 +804,7 @@ class Easy_Videoconvertor(wx.Frame):
         if not file_size_GB:
             return False
                 
-        return not (file_size_GB / duration_Hours < (self.settings.limit_size_mb / 1000))
+        return not (file_size_GB / duration_Hours < (float(self.settings.limit_size_mb) / 1000))
         
 
     def convert_one_file(self, input_file_path, output_file_path):
