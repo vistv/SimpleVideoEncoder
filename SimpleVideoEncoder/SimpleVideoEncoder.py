@@ -118,7 +118,7 @@ class Settings:
     limit_size_mb = str(700)
     is_use_own_encode_param = False
     own_encode_param = '-c:v libx264  -f mp4'
-    res_x = str(854)
+    __res_x = str(854)
     res_y = str(480)
     bitrate = str(1000)
 
