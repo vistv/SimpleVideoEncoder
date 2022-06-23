@@ -26,6 +26,18 @@
     <InterpreterReference Include="Global|PythonCore|3.7" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="aboutcls.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="helpcls.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="settingscls.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="settingsdialogcls.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="SimpleVideoEncoder.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
