@@ -32,6 +32,9 @@
     <Compile Include="helpcls.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="proj_constants.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="settingscls.py">
       <SubType>Code</SubType>
     </Compile>

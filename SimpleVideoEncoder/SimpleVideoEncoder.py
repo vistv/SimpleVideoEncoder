@@ -1,70 +1,44 @@
-
 import os
 from os import path
 from os.path import abspath
 import time
 import sched
 import threading
-
 import wx 
 import wx.xrc
 import subprocess
-from subprocess import Popen, PIPE
+from subprocess import Popen, run, STDOUT, PIPE
 from multiprocessing import Queue 
 import datetime
 import wx.html
 import psutil
 import wx.lib.newevent
 
-
 from aboutcls import About 
 from settingscls import Settings
 from helpcls import Help
 from settingsdialogcls import SettingsDialog
 
-EncEndEvent, EVT_ENC_END_EVENT = wx.lib.newevent.NewEvent()
+from proj_constants import *
 
-ID_OPEN_FILES = 1
-ID_OPEN_DIRECTORY = 2
-ID_RUN = 3
-ID_PAUSE = 4
-ID_STOP = 5
-ID_HELP = 6
-ID_ABOUT = 7
-
-
-ST_LIST_CHANGED = 0
-ST_WAITING = 1
-
-ST_PAUSED = 3
-ST_FINISHED = 4
-ST_STOPPED = 5
-
-ST_ENCODING = 50
-ST_1PASS = 51
-ST_2PASS = 52
-
-
-DATA_FILE_NAME = path.expandvars(r'%APPDATA%\SimpleVideoEncoder\persistent_data.pickle')        
-DATA_FILE_PATH = DATA_FILE_NAME.rsplit('\\', 1)[0] + '\\'
-
-        
 
 class SimpleVideoEncoder(wx.Frame):
 
-    
+    EncEndEvent, EVT_ENC_END_EVENT = wx.lib.newevent.NewEvent()
+    DATA_FILE_NAME = path.expandvars(r'%APPDATA%\SimpleVideoEncoder\persistent_data.pickle')        
+    DATA_FILE_PATH = DATA_FILE_NAME.rsplit('\\', 1)[0] + '\\'
+        
     file_list = [] 
     output_file_list = []
     move_file_list = []
     movie_duration = []
-    i = 0
+    current_processed_file_number = 0
 
     settings = Settings(DATA_FILE_NAME)
     
     process = None
     queue = Queue()
-        
-    
+     
     helpframe = None
     aboutframe = None
     timer_period = 200 #ms
@@ -75,13 +49,23 @@ class SimpleVideoEncoder(wx.Frame):
     def __init__(self, parent):
         super().__init__()
         
-     
-        
+        self.build_ui(parent)
+        self.connect_events()
+
+        self.create_directory_if_needed(self.DATA_FILE_NAME)
+        self.settings.read_settings()
+        self.res_x.SetValue(self.settings.res_x)
+        self.res_y.SetValue(self.settings.res_y)
+        self.bitrate.SetValue(self.settings.bitrate)
+
+        self.prepare_waiting_interface()
+
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_timer, self.timer)
 
-        # build ui*********************#
 
+    def build_ui(self, parent):
+  
         wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = 'Simple video encoder', pos = wx.DefaultPosition, size = wx.Size( 740,520 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
         
         self.SetSizeHints( wx.Size( 740,520 ), wx.DefaultSize )
@@ -110,7 +94,7 @@ class SimpleVideoEncoder(wx.Frame):
         self.menuitem_about = helpmenu.Append(ID_ABOUT, 'About\tCtrl+A', 'About the application')
 
         self.m_menubar2.Append(filemenu, '&File')
-        self.m_menubar2.Append(runmenu, '&Run')
+        self.m_menubar2.Append(runmenu, '&Action')
         self.m_menubar2.Append(helpmenu, '&Help')
         
         self.SetMenuBar( self.m_menubar2 )
@@ -119,7 +103,7 @@ class SimpleVideoEncoder(wx.Frame):
         self.Bind(wx.EVT_MENU, self.choose_dir, self.menuitem_opendirectory)
         self.Bind(wx.EVT_MENU, self.on_closing, self.menuitem_exit)
 
-        self.Bind(wx.EVT_MENU, self.run, self.menuitem_encode)
+        self.Bind(wx.EVT_MENU, self.on_run, self.menuitem_encode)
         self.Bind(wx.EVT_MENU, self.on_pause, self.menuitem_pause)
         self.Bind(wx.EVT_MENU, self.on_stop, self.menuitem_stop)
 
@@ -237,29 +221,17 @@ class SimpleVideoEncoder(wx.Frame):
 
         self.Centre( wx.BOTH )
 
-        # Connect Events
+
+    def connect_events(self):
         self.bt_dir.Bind( wx.EVT_BUTTON, self.choose_dir )
         self.bt_input.Bind( wx.EVT_BUTTON, self.choose_files )
         self.setting_butt.Bind( wx.EVT_BUTTON, self.setting_dialog )
         self.m_button_help.Bind(wx.EVT_BUTTON, self.on_help)
-        self.bt_run.Bind( wx.EVT_BUTTON, self.run )
+        self.bt_run.Bind( wx.EVT_BUTTON, self.on_run )
         self.Bind( wx.EVT_CLOSE, self.on_closing )
         self.m_bt_pause.Bind( wx.EVT_BUTTON, self.on_pause )
         self.m_bt_stop.Bind( wx.EVT_BUTTON, self.on_stop )
-        
-        #******************************#
-        self.create_directory_if_needed(DATA_FILE_NAME)
-        self.settings.read_settings()
-        self.res_x.SetValue(self.settings.res_x)
-        self.res_y.SetValue(self.settings.res_y)
-        self.bitrate.SetValue(self.settings.bitrate)
-        
-        self.Bind(EVT_ENC_END_EVENT, self.on_enc_end)
-
-        self.prepare_waiting_interface()
-
-        
-
+        self.Bind(self.EVT_ENC_END_EVENT, self.on_enc_end)
 
   
     def prepare_waiting_interface(self):
@@ -313,18 +285,15 @@ class SimpleVideoEncoder(wx.Frame):
         self.menuitem_pause.Enable(enable = True)
         self.menuitem_stop.Enable(enable = True)
 
-
         
     def on_enc_end(self, event):
         self.prepare_waiting_interface()
 
 
     def update_timer(self, event):
-        
-        
-        
+ 
         try:
-            full_duration = self.movie_duration[self.i]
+            full_duration = self.movie_duration[self.current_processed_file_number]
         except:
             if self.status == ST_FINISHED:
                 self.m_statusBar2.SetStatusText('   Everything is already done!')
@@ -373,7 +342,7 @@ class SimpleVideoEncoder(wx.Frame):
                     self.m_staticText_timetoend.SetLabel('The video will be encoded for: ' + time_enc.split('.')[0])
                 
                 
-        elif self.i > len(self.file_list):
+        elif self.current_processed_file_number > len(self.file_list):
             self.m_statusBar2.SetStatusText('   Everything is already done!')
             self.m_gauge1.SetValue(0)
 
@@ -408,8 +377,6 @@ class SimpleVideoEncoder(wx.Frame):
             fd = dialog.GetPaths()
         
         if fd:
-        
-            
             self.m_main_listBox.Clear()
             for i in fd:
                 i = i.replace('/', '\\')
@@ -425,7 +392,7 @@ class SimpleVideoEncoder(wx.Frame):
                 output_file = (output_file.rsplit('.', 1)[0] + '.' + "mp4")
                 self.output_file_list.append(output_file)
                 
-                                   
+            self.current_processed_file_number = 0                       
             self.status = ST_LIST_CHANGED
             self.prepare_ready_to_encode_interface()
         return result
@@ -482,6 +449,7 @@ class SimpleVideoEncoder(wx.Frame):
   
         if result: 
             self.prepare_ready_to_encode_interface()
+            self.current_processed_file_number = 0
         return result
 
 
@@ -490,7 +458,7 @@ class SimpleVideoEncoder(wx.Frame):
         Function check is there sense to convert file
         return bool
         '''
-        from subprocess import run, STDOUT, PIPE
+        
         util_path = self.settings.ffmpeg_location
         cmd = util_path + ' -i ' + '\"' + str(filepath) + '\"' + ' -hide_banner'
         output = run(cmd, stdout=PIPE, stderr=STDOUT, text=True)
@@ -541,7 +509,7 @@ class SimpleVideoEncoder(wx.Frame):
             try:
                 string = util_path + ' -y -i ' + '\"' + input_file_path + '\" '
                 string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K' + ' -pass 1' + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() 
-                string += ' -passlogfile ' + DATA_FILE_PATH + 'path1log.log ' + DATA_FILE_PATH + 'NULL  -hide_banner'
+                string += ' -passlogfile ' + self.DATA_FILE_PATH + 'path1log.log ' + self.DATA_FILE_PATH + 'NULL  -hide_banner'
                 self.m_staticText7.SetLabel('Encoding progress (1 pass):')
                 self.status = ST_1PASS
                 time_enc_start = datetime.datetime.now()
@@ -553,7 +521,7 @@ class SimpleVideoEncoder(wx.Frame):
             try:
                 string = util_path + ' -y -i ' + '\"' + input_file_path + '\" '
                 string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K' + ' -pass 2' + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() + ' ' 
-                string += ' -passlogfile ' + DATA_FILE_PATH + 'path1log.log ' +   '\"' +  output_file_path +  '\" -hide_banner' 
+                string += ' -passlogfile ' + self.DATA_FILE_PATH + 'path1log.log ' +   '\"' +  output_file_path +  '\" -hide_banner' 
                 self.m_staticText7.SetLabel('Encoding progress (2 pass):')
                 self.status = ST_2PASS
                 time_enc_start = datetime.datetime.now()
@@ -589,7 +557,7 @@ class SimpleVideoEncoder(wx.Frame):
         if file_path:        
             dirpath = file_path.rsplit('\\', 1)[0]
         else:
-            dirpath = DATA_FILE_PATH
+            dirpath = self.DATA_FILE_PATH
 
         for root, dirs, files in os.walk(dirpath):
             for name in files:
@@ -608,14 +576,15 @@ class SimpleVideoEncoder(wx.Frame):
             break
 
 
-    def run(self, event):
+    def on_run(self, event):
         '''
         main working function
         '''
         if not os.path.exists(self.settings.ffmpeg_location):
             wx.MessageBox('It isn\'t possible to locate ffmpeg.exe. Please set path to ffmpeg.exe in settings', 'ffmpeg location problem', wx.OK)
             return
-        
+   
+     
         
         self.prepare_encoding_interface()
         
@@ -628,50 +597,48 @@ class SimpleVideoEncoder(wx.Frame):
 
     def converting_thread(self):
         util_path = self.settings.ffmpeg_location
-        
-
 
         if self.status == ST_LIST_CHANGED: 
-            self.i = 0
+            self.current_processed_file_number = 0
             self.movie_duration = []
 
-        while self.i < len(self.file_list):
+        while self.current_processed_file_number < len(self.file_list):
             if self.status == ST_STOPPED: return
-            if (self.is_there_sens_to_convert(self.file_list[self.i], self.movie_duration) or (not self.settings.is_cryterium_on)):
-                self.create_directory_if_needed(self.output_file_list[self.i])
+            if (self.is_there_sens_to_convert(self.file_list[self.current_processed_file_number], self.movie_duration) or (not self.settings.is_cryterium_on)):
+                self.create_directory_if_needed(self.output_file_list[self.current_processed_file_number])
                 movie_duration_str = str(self.movie_duration[0])
 
      
 
-                self.m_main_listBox.SetSelection(self.i)
+                self.m_main_listBox.SetSelection(self.current_processed_file_number)
 
 
-                if self.convert_one_file(self.file_list[self.i], self.output_file_list[self.i]):
+                if self.convert_one_file(self.file_list[self.current_processed_file_number], self.output_file_list[self.current_processed_file_number]):
                     if self.status == ST_STOPPED:
                         return
-                    self.create_directory_if_needed(self.move_file_list[self.i])
-                    while os.path.isfile(self.move_file_list[self.i]):
-                        self.move_file_list[self.i] = self.insert(self.move_file_list[self.i], '+', len(self.move_file_list[self.i])-4)
-                    os.rename(self.file_list[self.i], self.move_file_list[self.i])
+                    self.create_directory_if_needed(self.move_file_list[self.current_processed_file_number])
+                    while os.path.isfile(self.move_file_list[self.current_processed_file_number]):
+                        self.move_file_list[self.current_processed_file_number] = self.insert(self.move_file_list[self.current_processed_file_number], '+', len(self.move_file_list[self.current_processed_file_number])-4)
+                    os.rename(self.file_list[self.current_processed_file_number], self.move_file_list[self.current_processed_file_number])
         
-                    self.m_main_listBox.SetString(self.i, self.m_main_listBox.GetString(self.i) + '   <--- Done')
+                    self.m_main_listBox.SetString(self.current_processed_file_number, self.m_main_listBox.GetString(self.current_processed_file_number) + '   <--- Done')
                     self.delete_garbage_after()
                 else:
                     if self.status == ST_STOPPED:
                         return
                     else:
-                        self.m_main_listBox.SetString(self.i, self.m_main_listBox.GetString(self.i) + '   <--- Error')
+                        self.m_main_listBox.SetString(self.current_processed_file_number, self.m_main_listBox.GetString(self.current_processed_file_number) + '   <--- Error')
                     pass
             else:
-                self.create_directory_if_needed(self.output_file_list[self.i])
-                while os.path.isfile(self.output_file_list[self.i]):
-                    self.output_file_list[self.i] = self.insert(self.output_file_list[self.i], '+', len(self.output_file_list[self.i])-4)
-                os.rename(self.file_list[self.i], self.output_file_list[self.i])
-                self.m_main_listBox.SetString(self.i, self.m_main_listBox.GetString(self.i) + '   <--- No sense to convert')
+                self.create_directory_if_needed(self.output_file_list[self.current_processed_file_number])
+                while os.path.isfile(self.output_file_list[self.current_processed_file_number]):
+                    self.output_file_list[self.current_processed_file_number] = self.insert(self.output_file_list[self.current_processed_file_number], '+', len(self.output_file_list[self.current_processed_file_number])-4)
+                os.rename(self.file_list[self.current_processed_file_number], self.output_file_list[self.current_processed_file_number])
+                self.m_main_listBox.SetString(self.current_processed_file_number, self.m_main_listBox.GetString(self.current_processed_file_number) + '   <--- No sense to convert')
         
-            self.i += 1
+            self.current_processed_file_number += 1
 
-        self.i += 1
+        self.current_processed_file_number += 1
         self.m_staticText7.SetLabel('')   
         self.status = ST_FINISHED
         self.m_main_listBox.SetSelection(-1)
@@ -680,7 +647,7 @@ class SimpleVideoEncoder(wx.Frame):
         self.output_file_list = []
         self.move_file_list = []
         
-        wx.PostEvent(self, EncEndEvent())
+        wx.PostEvent(self, self.EncEndEvent())
 
 
     def on_pause(self, event):
@@ -713,7 +680,7 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_gauge1.SetValue(0)
         self.m_staticText7.SetLabel('')
         self.m_staticText_timetoend.SetLabel('')
-        if self.i < len(self.file_list):
+        if self.current_processed_file_number < len(self.file_list):
             self.status = ST_STOPPED
             self.prepare_ready_to_encode_interface()
         else:
@@ -740,7 +707,6 @@ class SimpleVideoEncoder(wx.Frame):
 
 
 if __name__ == "__main__":
-
     app = wx.App()
     frame = SimpleVideoEncoder(None)
     frame.Show()
