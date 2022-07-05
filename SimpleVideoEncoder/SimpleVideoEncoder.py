@@ -18,6 +18,7 @@ from aboutcls import About
 from settingscls import Settings
 from helpcls import Help
 from settingsdialogcls import SettingsDialog
+from ffmpegwrapper import FFmpegWrapper
 
 from proj_constants import *
 
@@ -28,13 +29,9 @@ class SimpleVideoEncoder(wx.Frame):
     DATA_FILE_NAME = path.expandvars(r'%APPDATA%\SimpleVideoEncoder\persistent_data.pickle')        
     DATA_FILE_PATH = DATA_FILE_NAME.rsplit('\\', 1)[0] + '\\'
         
-    file_list = [] 
-    output_file_list = []
-    move_file_list = []
-    movie_duration = []
-    current_processed_file_number = 0
 
     settings = Settings(DATA_FILE_NAME)
+    
     
     process = None
     queue = Queue()
@@ -48,11 +45,13 @@ class SimpleVideoEncoder(wx.Frame):
 
     def __init__(self, parent):
         super().__init__()
+
+        self.ffmpg_wrp = FFmpegWrapper(self)
         
         self.build_ui(parent)
         self.connect_events()
 
-        self.create_directory_if_needed(self.DATA_FILE_NAME)
+        self.ffmpg_wrp.create_directory_if_needed(self.DATA_FILE_NAME)
         self.settings.read_settings()
         self.res_x.SetValue(self.settings.res_x)
         self.res_y.SetValue(self.settings.res_y)
@@ -66,9 +65,9 @@ class SimpleVideoEncoder(wx.Frame):
 
     def build_ui(self, parent):
   
-        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = 'Simple video encoder', pos = wx.DefaultPosition, size = wx.Size( 740,520 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+        wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = 'Simple video encoder', pos = wx.DefaultPosition, size = wx.Size( 890,520 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
         
-        self.SetSizeHints( wx.Size( 740,520 ), wx.DefaultSize )
+        self.SetSizeHints( wx.Size( 890,520 ), wx.DefaultSize )
         
         icon = wx.Icon()
         icon.CopyFromBitmap(wx.Bitmap("vico.ico", wx.BITMAP_TYPE_ANY))
@@ -110,19 +109,20 @@ class SimpleVideoEncoder(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_help, self.menuitem_help)
         self.Bind(wx.EVT_MENU, self.on_about, self.menuitem_about)
         
-        
-        
+             
         
         bSizer7 = wx.BoxSizer( wx.VERTICAL )
-        bSizer7.SetMinSize( wx.Size( 600,400 ) )
 
         self.m_panel4 = wx.Panel( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TAB_TRAVERSAL )
-        self.bSizer9 = wx.BoxSizer( wx.HORIZONTAL )
+        bSizer9 = wx.BoxSizer( wx.HORIZONTAL )
 
-        gSizer5 = wx.GridSizer( 2, 5, 0, 0 )
+        gSizer5 = wx.GridSizer( 2, 6, 0, 0 )
 
-        self.bt_dir = wx.Button( self.m_panel4, wx.ID_ANY, u"Choose directory", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.bt_dir = wx.Button( self.m_panel4, wx.ID_ANY, u"Open Directory", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer5.Add( self.bt_dir, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_checkBox_keep_resolution = wx.CheckBox( self.m_panel4, wx.ID_ANY, u"Keep resolution", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer5.Add( self.m_checkBox_keep_resolution, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5 )
 
         self.m_staticText9 = wx.StaticText( self.m_panel4, wx.ID_ANY, u"Resolution X:", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText9.Wrap( -1 )
@@ -138,10 +138,15 @@ class SimpleVideoEncoder(wx.Frame):
         gSizer5.Add( self.m_staticText10, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
 
         self.bitrate = wx.TextCtrl( self.m_panel4, wx.ID_ANY, u"1000", wx.DefaultPosition, wx.DefaultSize, wx.TE_CENTER )
+        self.bitrate.SetMaxSize( wx.Size( 50,-1 ) )
+
         gSizer5.Add( self.bitrate, 0, wx.ALL|wx.EXPAND, 5 )
 
-        self.bt_input = wx.Button( self.m_panel4, wx.ID_ANY, u"Choose file(s)", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.bt_input = wx.Button( self.m_panel4, wx.ID_ANY, u"Open file(s)", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer5.Add( self.bt_input, 0, wx.ALL|wx.EXPAND, 5 )
+
+        self.m_checkBox_keep_ratio = wx.CheckBox( self.m_panel4, wx.ID_ANY, u"Keep Aspect ratio", wx.DefaultPosition, wx.DefaultSize, 0 )
+        gSizer5.Add( self.m_checkBox_keep_ratio, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, 5 )
 
         self.m_staticText11 = wx.StaticText( self.m_panel4, wx.ID_ANY, u"Resolution Y:", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText11.Wrap( -1 )
@@ -154,38 +159,36 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_button_help = wx.Button( self.m_panel4, wx.ID_ANY, u"Help", wx.DefaultPosition, wx.DefaultSize, 0 )
         gSizer5.Add( self.m_button_help, 1, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
 
-
         self.setting_butt = wx.Button( self.m_panel4, wx.ID_ANY, u"Setting", wx.DefaultPosition, wx.DefaultSize, 0 )
-        gSizer5.Add( self.setting_butt, 1, wx.ALL|wx.EXPAND, 5 )
+        gSizer5.Add( self.setting_butt, 0, wx.ALL|wx.EXPAND, 5 )
 
 
-        self.bSizer9.Add( gSizer5, 5, wx.EXPAND, 5 )
+        bSizer9.Add( gSizer5, 5, wx.EXPAND, 5 )
 
-        self.bt_run = wx.Button( self.m_panel4, wx.ID_ANY, u"ENCODE", wx.DefaultPosition, wx.DefaultSize, 0 )
-        self.bSizer9.Add( self.bt_run, 1, wx.ALL|wx.EXPAND, 5 )
+        self.bt_run = wx.Button( self.m_panel4, wx.ID_ANY, u"CONVERT", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer9.Add( self.bt_run, 1, wx.ALL|wx.EXPAND, 5 )
 
 
-        self.m_panel4.SetSizer( self.bSizer9 )
+        self.m_panel4.SetSizer( bSizer9 )
         self.m_panel4.Layout()
-        self.bSizer9.Fit( self.m_panel4 )
+        bSizer9.Fit( self.m_panel4 )
         bSizer7.Add( self.m_panel4, 1, wx.EXPAND|wx.TOP|wx.RIGHT|wx.LEFT, 1 )
 
         m_main_listBoxChoices = []
         self.m_main_listBox = wx.ListBox( self, wx.ID_ANY, wx.DefaultPosition, wx.Size( -1,300 ), m_main_listBoxChoices, 0 )
         self.m_main_listBox.SetMinSize( wx.Size( -1,300 ) )
 
-        
-        bSizer7.Add( self.m_main_listBox, 7, wx.ALL|wx.EXPAND, 1 )
+        bSizer7.Add( self.m_main_listBox, 5, wx.ALL|wx.EXPAND, 1 )
 
         self.m_panel2 = wx.Panel( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TAB_TRAVERSAL )
         bSizer91 = wx.BoxSizer( wx.VERTICAL )
 
         gSizer2 = wx.GridSizer( 0, 2, 0, 0 )
 
-        self.m_staticText7 = wx.StaticText( self.m_panel2, wx.ID_ANY, u"", wx.DefaultPosition, wx.DefaultSize, 0 )
+        self.m_staticText7 = wx.StaticText( self.m_panel2, wx.ID_ANY, u"Encoding progress:", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText7.Wrap( -1 )
 
-        gSizer2.Add( self.m_staticText7, 0, wx.ALL, 5 )
+        gSizer2.Add( self.m_staticText7, 0, wx.ALL|wx.ALIGN_RIGHT, 5 )
 
         self.m_staticText_timetoend = wx.StaticText( self.m_panel2, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
         self.m_staticText_timetoend.Wrap( -1 )
@@ -216,10 +219,12 @@ class SimpleVideoEncoder(wx.Frame):
         bSizer91.Fit( self.m_panel2 )
         bSizer7.Add( self.m_panel2, 1, wx.EXPAND |wx.ALL, 0 )
 
+
         self.SetSizer( bSizer7 )
         self.Layout()
 
         self.Centre( wx.BOTH )
+
 
 
     def connect_events(self):
@@ -232,6 +237,8 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_bt_pause.Bind( wx.EVT_BUTTON, self.on_pause )
         self.m_bt_stop.Bind( wx.EVT_BUTTON, self.on_stop )
         self.Bind(self.EVT_ENC_END_EVENT, self.on_enc_end)
+        self.m_checkBox_keep_resolution.Bind( wx.EVT_CHECKBOX, self.on_check_keep_resolution )
+        self.m_checkBox_keep_ratio.Bind( wx.EVT_CHECKBOX, self.on_check_keep_aspect )
 
   
     def prepare_waiting_interface(self):
@@ -293,7 +300,7 @@ class SimpleVideoEncoder(wx.Frame):
     def update_timer(self, event):
  
         try:
-            full_duration = self.movie_duration[self.current_processed_file_number]
+            full_duration = self.ffmpg_wrp.movie_duration[self.ffmpg_wrp.current_processed_file_number]
         except:
             if self.status == ST_FINISHED:
                 self.m_statusBar2.SetStatusText('   Everything is already done!')
@@ -342,7 +349,7 @@ class SimpleVideoEncoder(wx.Frame):
                     self.m_staticText_timetoend.SetLabel('The video will be encoded for: ' + time_enc.split('.')[0])
                 
                 
-        elif self.current_processed_file_number > len(self.file_list):
+        elif self.ffmpg_wrp.current_processed_file_number > len(self.ffmpg_wrp.file_list):
             self.m_statusBar2.SetStatusText('   Everything is already done!')
             self.m_gauge1.SetValue(0)
 
@@ -382,17 +389,17 @@ class SimpleVideoEncoder(wx.Frame):
                 i = i.replace('/', '\\')
                 self.m_main_listBox.Append(i)
 
-                self.file_list.append(i)
+                self.ffmpg_wrp.file_list.append(i)
             
                 path_dir = i.rsplit('\\', 1)[0]
                 result = True # file exist..
-                self.move_file_list.append(self.insert(i, '\\done', len(path_dir)))
+                self.ffmpg_wrp.move_file_list.append(self.insert(i, '\\done', len(path_dir)))
             
                 output_file = self.insert(i, '\\conv', len(path_dir))
                 output_file = (output_file.rsplit('.', 1)[0] + '.' + "mp4")
-                self.output_file_list.append(output_file)
+                self.ffmpg_wrp.output_file_list.append(output_file)
                 
-            self.current_processed_file_number = 0                       
+            self.ffmpg_wrp.current_processed_file_number = 0                       
             self.status = ST_LIST_CHANGED
             self.prepare_ready_to_encode_interface()
         return result
@@ -435,145 +442,22 @@ class SimpleVideoEncoder(wx.Frame):
                 extent = temp_str.rsplit('.',1)[1]
                 if extent not in ('mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'asf', 'm4v', 'mpg', 'mpeg'):
                     continue
-                self.file_list.append(temp_str)
+                self.ffmpg_wrp.file_list.append(temp_str)
                 result = True # file exist..
-                self.move_file_list.append(self.insert(temp_str, '\\done', len(path_dir)))
+                self.ffmpg_wrp.move_file_list.append(self.insert(temp_str, '\\done', len(path_dir)))
             
                 output_file = self.insert(temp_str, '\\conv', len(path_dir))
                 output_file = (output_file.rsplit('.', 1)[0] + '.' + "mp4")
-                self.output_file_list.append(output_file)
+                self.ffmpg_wrp.output_file_list.append(output_file)
 
-        for name in self.file_list:
+        for name in self.ffmpg_wrp.file_list:
             print(name)
             self.m_main_listBox.Append(name)
   
         if result: 
             self.prepare_ready_to_encode_interface()
-            self.current_processed_file_number = 0
+            self.ffmpg_wrp.current_processed_file_number = 0
         return result
-
-
-    def is_there_sens_to_convert(self, filepath, movie_duration = []):
-        '''
-        Function check is there sense to convert file
-        return bool
-        '''
-        
-        util_path = self.settings.ffmpeg_location
-        cmd = util_path + ' -i ' + '\"' + str(filepath) + '\"' + ' -hide_banner'
-        output = run(cmd, stdout=PIPE, stderr=STDOUT, text=True)
-        output_info = str(output)
-    
-        dur_pos = output_info.find('Duration:')
-        if dur_pos == -1:
-            return True
-
-        dots_pos = output_info.find(':', dur_pos)
-        dots_pos = output_info.find(':', dots_pos + 1)
-        output_info = output_info[dots_pos - 2 : dots_pos + 6]
-                
-        duration_Hours = float(output_info[:2]) + float(output_info[3:5]) / 60 + float(output_info[6:8]) / 3600
-        movie_duration.append(float(duration_Hours))
-
-        file_size = os.path.getsize(filepath)
-        file_size_GB = file_size / (1024 * 1024 * 1024)
-    
-
-        if not file_size_GB:
-            return False
-                
-        return not (file_size_GB / duration_Hours < (float(self.settings.limit_size_mb) / 1000))
-        
-
-    def convert_one_file(self, input_file_path, output_file_path):
-        '''
-            Converts one file, returns success
-        '''
-        
-        util_path = self.settings.ffmpeg_location
-
-        def send_time_script():
-            while (not self.status == ST_STOPPED):
-                line = self.process.stderr.readline()
-                self.process.stderr.flush()
-                if line[0:6] == 'frame=':
-                    self.queue.put(line)
-                    time.sleep(self.timer_period / 1000)       # ms to s 
-                if self.process.poll() == 0:
-                    break
-  
-
-        encode_param = self.settings.own_encode_param if self.settings.is_use_own_encode_param else self.settings.default_encode_param
-        if self.status == ST_STOPPED: return False
-        if self.settings.is_two_pass:
-            try:
-                string = util_path + ' -y -i ' + '\"' + input_file_path + '\" '
-                string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K' + ' -pass 1' + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() 
-                string += ' -passlogfile ' + self.DATA_FILE_PATH + 'path1log.log ' + self.DATA_FILE_PATH + 'NULL  -hide_banner'
-                self.m_staticText7.SetLabel('Encoding progress (1 pass):')
-                self.status = ST_1PASS
-                time_enc_start = datetime.datetime.now()
-                self.process = Popen(string, stdout=None, stderr=PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                send_time_script()
-            except:
-                return False
-            if self.status == ST_STOPPED: return False
-            try:
-                string = util_path + ' -y -i ' + '\"' + input_file_path + '\" '
-                string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K' + ' -pass 2' + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() + ' ' 
-                string += ' -passlogfile ' + self.DATA_FILE_PATH + 'path1log.log ' +   '\"' +  output_file_path +  '\" -hide_banner' 
-                self.m_staticText7.SetLabel('Encoding progress (2 pass):')
-                self.status = ST_2PASS
-                time_enc_start = datetime.datetime.now()
-                self.process = Popen(string, stdout=None, stderr=PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                send_time_script()
-            except:
-                return False
-        else:
-            try:
-                if self.status == ST_STOPPED: return False
-                string = util_path + ' -y ' + '-i ' + '\"' + input_file_path + '\" '
-                string +=  encode_param + ' -b:v ' + self.bitrate.GetValue() + 'K'  + ' -vf scale=' + self.res_x.GetValue() + ':' + self.res_y.GetValue() + ' ' 
-                string +=   '\"' +  output_file_path +  '\" -hide_banner' 
-                self.m_staticText7.SetLabel('Encoding progress:')
-                self.status = ST_ENCODING
-                time_enc_start = datetime.datetime.now()
-                self.process = Popen(string, stdout=None, stderr=PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                send_time_script()
-                
-                #print(self.process.pid)
-            except:
-                return False
-        return True
-
-
-    def create_directory_if_needed(self,filepath:str):
-        dirpath = filepath.rsplit('\\', 1)[0]
-        if not os.path.isdir(dirpath):
-            os.makedirs(dirpath)
-
-
-    def delete_garbage_after(self,file_path=''):
-        if file_path:        
-            dirpath = file_path.rsplit('\\', 1)[0]
-        else:
-            dirpath = self.DATA_FILE_PATH
-
-        for root, dirs, files in os.walk(dirpath):
-            for name in files:
-                temp_str = os.path.join(root, name)
-                if 'NULL' in temp_str or 'path1log' in temp_str:
-                    os.remove(temp_str)
-
-            for name in dirs:
-                temp_str = os.path.join(root, name)
-
-                for root1, dirs1, files1 in os.walk(temp_str):
-                    if (not files1) and (not dirs1):
-                        os.rmdir(temp_str)
-                    break
-                   
-            break
 
 
     def on_run(self, event):
@@ -587,67 +471,20 @@ class SimpleVideoEncoder(wx.Frame):
      
         
         self.prepare_encoding_interface()
+
+
+        self.ffmpg_wrp.set_keep_aspect(self.m_checkBox_keep_ratio.Get3StateValue())
+        self.ffmpg_wrp.set_keep_resolution(self.m_checkBox_keep_resolution.Get3StateValue())
+        self.ffmpg_wrp.set_bitrate(self.bitrate.GetValue())
+        self.ffmpg_wrp.set_resX(self.res_x.GetValue())
+        self.ffmpg_wrp.set_resY(self.res_y.GetValue())
+
         
         self.timer.Start(self.timer_period)
 
-        self.conv_thread = threading.Thread(target = self.converting_thread)
+        self.conv_thread = threading.Thread(target = self.ffmpg_wrp.converting_thread)
         self.status = ST_ENCODING
         self.conv_thread.start()
-
-
-    def converting_thread(self):
-        util_path = self.settings.ffmpeg_location
-
-        if self.status == ST_LIST_CHANGED: 
-            self.current_processed_file_number = 0
-            self.movie_duration = []
-
-        while self.current_processed_file_number < len(self.file_list):
-            if self.status == ST_STOPPED: return
-            if (self.is_there_sens_to_convert(self.file_list[self.current_processed_file_number], self.movie_duration) or (not self.settings.is_cryterium_on)):
-                self.create_directory_if_needed(self.output_file_list[self.current_processed_file_number])
-                movie_duration_str = str(self.movie_duration[0])
-
-     
-
-                self.m_main_listBox.SetSelection(self.current_processed_file_number)
-
-
-                if self.convert_one_file(self.file_list[self.current_processed_file_number], self.output_file_list[self.current_processed_file_number]):
-                    if self.status == ST_STOPPED:
-                        return
-                    self.create_directory_if_needed(self.move_file_list[self.current_processed_file_number])
-                    while os.path.isfile(self.move_file_list[self.current_processed_file_number]):
-                        self.move_file_list[self.current_processed_file_number] = self.insert(self.move_file_list[self.current_processed_file_number], '+', len(self.move_file_list[self.current_processed_file_number])-4)
-                    os.rename(self.file_list[self.current_processed_file_number], self.move_file_list[self.current_processed_file_number])
-        
-                    self.m_main_listBox.SetString(self.current_processed_file_number, self.m_main_listBox.GetString(self.current_processed_file_number) + '   <--- Done')
-                    self.delete_garbage_after()
-                else:
-                    if self.status == ST_STOPPED:
-                        return
-                    else:
-                        self.m_main_listBox.SetString(self.current_processed_file_number, self.m_main_listBox.GetString(self.current_processed_file_number) + '   <--- Error')
-                    pass
-            else:
-                self.create_directory_if_needed(self.output_file_list[self.current_processed_file_number])
-                while os.path.isfile(self.output_file_list[self.current_processed_file_number]):
-                    self.output_file_list[self.current_processed_file_number] = self.insert(self.output_file_list[self.current_processed_file_number], '+', len(self.output_file_list[self.current_processed_file_number])-4)
-                os.rename(self.file_list[self.current_processed_file_number], self.output_file_list[self.current_processed_file_number])
-                self.m_main_listBox.SetString(self.current_processed_file_number, self.m_main_listBox.GetString(self.current_processed_file_number) + '   <--- No sense to convert')
-        
-            self.current_processed_file_number += 1
-
-        self.current_processed_file_number += 1
-        self.m_staticText7.SetLabel('')   
-        self.status = ST_FINISHED
-        self.m_main_listBox.SetSelection(-1)
-        
-        self.file_list = []
-        self.output_file_list = []
-        self.move_file_list = []
-        
-        wx.PostEvent(self, self.EncEndEvent())
 
 
     def on_pause(self, event):
@@ -680,7 +517,7 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_gauge1.SetValue(0)
         self.m_staticText7.SetLabel('')
         self.m_staticText_timetoend.SetLabel('')
-        if self.current_processed_file_number < len(self.file_list):
+        if self.ffmpg_wrp.current_processed_file_number < len(self.ffmpg_wrp.file_list):
             self.status = ST_STOPPED
             self.prepare_ready_to_encode_interface()
         else:
@@ -702,6 +539,12 @@ class SimpleVideoEncoder(wx.Frame):
         self.settings.write_settings()
 
         os._exit(1)
+
+    def on_check_keep_resolution( self, event ):
+        event.Skip()
+
+    def on_check_keep_aspect( self, event ):
+        event.Skip()
 
 
 

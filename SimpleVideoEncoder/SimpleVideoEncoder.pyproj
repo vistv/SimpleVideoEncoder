@@ -29,6 +29,9 @@
     <Compile Include="aboutcls.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ffmpegwrapper.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="helpcls.py">
       <SubType>Code</SubType>
     </Compile>
