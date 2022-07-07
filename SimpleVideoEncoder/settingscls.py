@@ -15,6 +15,10 @@ class Settings:
     res_x = str(854)
     res_y = str(480)
     bitrate = str(1000)
+    is_keep_ratio = False
+    is_keep_resolution = False
+    is_upscale_forbidden = False
+    bitrate_choise = 0
 
     def __init__( self, data_file_name ):
         self.DATA_FILE_NAME = data_file_name
@@ -40,6 +44,11 @@ class Settings:
                 self.res_x = self.my_persistent_data['res_x']
                 self.res_y = self.my_persistent_data['res_y']
                 self.bitrate = self.my_persistent_data['bitrate']
+                self.is_keep_ratio = self.my_persistent_data['is_keep_ratio']
+                self.is_keep_resolution = self.my_persistent_data['is_keep_resolution']
+                self.is_upscale_forbidden = self.my_persistent_data['is_upscale_forbidden']
+                self.bitrate_choise = self.my_persistent_data['bitrate_choise']
+            
             except:
                 return
    
@@ -64,7 +73,11 @@ class Settings:
                         'own_encode_param' : self.own_encode_param,
                         'res_x' : self.res_x,
                         'res_y' : self.res_y,
-                        'bitrate' : self.bitrate
+                        'bitrate' : self.bitrate,
+                        'is_keep_resolution' : self.is_keep_resolution,
+                        'is_keep_ratio' : self.is_keep_ratio,
+                        'is_upscale_forbidden' : self.is_upscale_forbidden,
+                        'bitrate_choise' : self.bitrate_choise                        
                         })
 
         with open(self.DATA_FILE_NAME, 'wb') as f:  

@@ -56,6 +56,9 @@ class SettingsDialog (wx.Dialog):
         self.m_staticline3 = wx.StaticLine( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.LI_HORIZONTAL )
         bSizer3.Add( self.m_staticline3, 0, wx.EXPAND |wx.ALL, 5 )
 
+        self.m_is_upscale_forbidden = wx.CheckBox( self, wx.ID_ANY, u"Do not upscale video", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer3.Add( self.m_is_upscale_forbidden, 0, wx.ALL, 5 )
+        
         bSizer7 = wx.BoxSizer( wx.HORIZONTAL )
 
         self.m_check_conv_condit = wx.CheckBox( self, wx.ID_ANY, u"Encode only if size of 1 hour  is greater than (MB):", wx.DefaultPosition, wx.DefaultSize, 0 )
@@ -147,7 +150,8 @@ class SettingsDialog (wx.Dialog):
         self.settings.limit_size_mb = float(self.m_textCtrl_cryterium.GetValue())
         self.settings.is_use_own_encode_param = self.m_Check_env_param.GetValue()
         self.settings.own_encode_param = self.m_textCtrl_encparam.GetValue()
-        
+        self.settings.is_upscale_forbidden = self.m_is_upscale_forbidden.GetValue()
+               
         self.settings.write_settings()
         self.EndModal(wx.ID_OK)
 
@@ -160,6 +164,7 @@ class SettingsDialog (wx.Dialog):
         self.m_textCtrl_cryterium.SetValue(str(self.settings.limit_size_mb)) 
         self.m_Check_env_param.SetValue(self.settings.is_use_own_encode_param)
         self.m_textCtrl_encparam.SetValue(self.settings.own_encode_param)
+        self.m_is_upscale_forbidden.SetValue(self.settings.is_upscale_forbidden)
 
 
     def get_settings(self):
