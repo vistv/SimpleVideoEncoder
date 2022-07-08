@@ -17,7 +17,7 @@ class About ( wx.Frame ):
         self.m_htmlWin1.SetMinSize( wx.Size( 200,100 ) )
         
         self.m_htmlWin1.SetPage(
-            "Simple video encoder version 1.2<p><p>"
+            "Simple video encoder version 2.0<p><p>"
             "This is free opencode application<p>"
             "<a href=\"mailto:smviden@gmail.com\">smviden@gmail.com</a><p><p>"
             "With best regards, Vitaliy")
