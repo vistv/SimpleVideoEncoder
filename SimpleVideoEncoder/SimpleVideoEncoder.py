@@ -258,14 +258,14 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_button_up = wx.Button( self.m_panel3, wx.ID_ANY, u"Up", wx.DefaultPosition, wx.DefaultSize, 0 )
         bSizer13.Add( self.m_button_up, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
 
-        self.m_button13 = wx.Button( self.m_panel3, wx.ID_ANY, u"Down", wx.DefaultPosition, wx.DefaultSize, 0 )
-        bSizer13.Add( self.m_button13, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
+        self.m_button_down = wx.Button( self.m_panel3, wx.ID_ANY, u"Down", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer13.Add( self.m_button_down, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
 
-        self.m_button14 = wx.Button( self.m_panel3, wx.ID_ANY, u"Del", wx.DefaultPosition, wx.DefaultSize, 0 )
-        bSizer13.Add( self.m_button14, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
+        self.m_button_del = wx.Button( self.m_panel3, wx.ID_ANY, u"Del", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer13.Add( self.m_button_del, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
 
-        self.m_button141 = wx.Button( self.m_panel3, wx.ID_ANY, u"Add", wx.DefaultPosition, wx.DefaultSize, 0 )
-        bSizer13.Add( self.m_button141, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
+        self.m_button_add = wx.Button( self.m_panel3, wx.ID_ANY, u"Add", wx.DefaultPosition, wx.DefaultSize, 0 )
+        bSizer13.Add( self.m_button_add, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
 
 
         self.m_panel3.SetSizer( bSizer13 )
@@ -340,9 +340,9 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_radioBtn_hbtrt.Bind( wx.EVT_RADIOBUTTON, self.on_rbutton_high )
         self.m_radioBtn_obtrt.Bind( wx.EVT_RADIOBUTTON, self.on_rbutton_own )
         self.m_button_up.Bind( wx.EVT_BUTTON, self.on_button_up )
-        self.m_button13.Bind( wx.EVT_BUTTON, self.on_button_down )
-        self.m_button14.Bind( wx.EVT_BUTTON, self.on_button_del )
-        self.m_button141.Bind( wx.EVT_BUTTON, self.on_button_add )
+        self.m_button_down.Bind( wx.EVT_BUTTON, self.on_button_down )
+        self.m_button_del.Bind( wx.EVT_BUTTON, self.on_button_del )
+        self.m_button_add.Bind( wx.EVT_BUTTON, self.on_button_add )
 
   
     def prepare_waiting_interface(self):
@@ -364,6 +364,11 @@ class SimpleVideoEncoder(wx.Frame):
         self.m_staticText_timetoend.SetLabel('')
         self.m_staticText7.SetLabel('')
 
+        self.m_button_up.Enable()
+        self.m_button_down.Enable()
+        self.m_button_del.Enable()
+        self.m_button_add.Enable()
+
 
     def prepare_ready_to_encode_interface(self):
         self.bt_input.Enable()
@@ -373,6 +378,11 @@ class SimpleVideoEncoder(wx.Frame):
 
         self.m_bt_pause.Disable()
         self.m_bt_stop.Disable()
+
+        self.m_button_up.Enable()
+        self.m_button_down.Enable()
+        self.m_button_del.Enable()
+        self.m_button_add.Enable()
 
         self.menuitem_openfile.Enable(enable = True)
         self.menuitem_opendirectory.Enable(enable = True)
@@ -395,6 +405,11 @@ class SimpleVideoEncoder(wx.Frame):
         self.menuitem_encode.Enable(enable = False)
         self.menuitem_pause.Enable(enable = True)
         self.menuitem_stop.Enable(enable = True)
+
+        self.m_button_up.Enable()
+        self.m_button_down.Enable()
+        self.m_button_del.Enable()
+        self.m_button_add.Enable()
 
         
     def on_enc_end(self, event):
