@@ -102,6 +102,9 @@ class FFmpegWrapper:
 
 
     def determine_bitrate(self):
+
+        self.bitrate = self.bitrate_from_interface
+
         if self.bitrate_choise == 3:
             return
         elif self.bitrate_choise == 0:
@@ -121,6 +124,13 @@ class FFmpegWrapper:
 
 
     def correct_resolution(self, filepath):
+
+        self.resX = self.resX_from_interface 
+        self.resY = self.resY_from_interface
+
+          
+        
+
         
         if (not self.is_keep_ratio) and (not self.is_keep_resolution) and (not self.is_upscale_forbidden):
             return
@@ -179,14 +189,17 @@ class FFmpegWrapper:
 
     def set_bitrate(self, bitrate='1000'):
         self.bitrate = bitrate
-
+        self.bitrate_from_interface = bitrate
+   
 
     def set_resX(self, resX='1920'):
         self.resX = resX
+        self.resX_from_interface = resX
 
 
     def set_resY(self, resY='1080'):
         self.resY = resY
+        self.resY_from_interface = resY
 
 
     def set_keep_resolution(self, keep_resolution_flag = False):
